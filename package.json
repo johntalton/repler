@@ -1,0 +1,14 @@
+{
+  "name": "repler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johntalton/repler.git"
+  },
+  "bugs": {
+    "url": "https://github.com/johntalton/repler/issues"
+  },
+  "homepage": "https://github.com/johntalton/repler#readme"
+}
