@@ -6,7 +6,7 @@ const readline = require('readline');
 let promptCallback = undefined;
 let state = { defaultValid: false };
 let commands = [
-  { name: 'exit', valid: () => true, callback: function(state){ rl.close(); return Promise.resolve(-1); } },
+  { name: 'exit', valid: () => true, callback: function(state){ return Promise.resolve(-1); } },
   // { name: 'clear', valid: () => true, callback: function(state) { return Promise.resolve(rl.); } }
   { name: 'clear', valid: () => true, callback: function(state) { console.log('\u001B[2J\u001B[0;0f'); return Promise.
 resolve();  } }
@@ -28,6 +28,19 @@ class Repler {
   static go(initstate){
     //state = { ...state, ...initstate };
     state = Object.assign(state, initstate);
+
+    if(state.autologoutMs === undefined) { state.autologoutMs = 45 * 1000; }
+    state.autologoutTimer = setInterval(s => {
+      if(s.touchedAt === undefined) { s.touchedAt = Date.now(); return; }
+      const delta = Date.now() - s.touchedAt;
+      if(delta > state.autologoutMs) {
+        console.log('... auto logout');
+        clearInterval(state.autologoutTimer);
+        rl.close();
+      }
+    }, 1 * 1000, state);
+
+    // todo first prompt MOTD
     prompt();
   }
 
@@ -85,7 +98,7 @@ function finderPartial(partialCmd, state) {
   return [suggestions, line];
 }
 
-function commandHandler(line) {
+async function commandHandler(line) {
   const cmd = line.split(' ')[0];
   let item = commands.find(finderFull(cmd, state)); // todo change to filter and handle multi
   if(item === undefined) {
@@ -97,9 +110,16 @@ function commandHandler(line) {
     }
   }
 
+  state.touchedAt = Date.now();
   state.line = line;
-  Promise.resolve(state).then(item.callback).then(exitcode => {
-    if(exitcode === -1){ console.log('end of line.'); return; }
+
+  await Promise.resolve(state).then(item.callback).then(exitcode => {
+    if(exitcode === -1){
+      console.log('end of line.');
+      clearInterval(state.autologoutTimer);
+      rl.close();
+      return;
+    }
     prompt();
   }).catch(e => {
     console.log('error', e);
